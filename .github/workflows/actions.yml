@@ -1,28 +1,26 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: cypress/browsers:node10.24.1-chrome89-ff86
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Cache Cypress binary
-        uses: actions/cache@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ~/.cache
-          key: ${{ runner.os }}-cypress-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-cypress-
+          node-version: "10"
 
       - name: Install dependencies
-        run: |
-          npm install cypress
-          $(npm bin)/cypress install
+        run: npm install
 
-      - name: Run Cypress tests
-        run: $(npm bin)/cypress run
+      - name: Run deploy script
+        run: npm run deploy
 
