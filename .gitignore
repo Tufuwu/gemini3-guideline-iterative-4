@@ -1,13 +1,16 @@
-# example checkpoints
-irrad_spectroscopy/examples/.ipynb_checkpoints/
-# example output folder
-irrad_spectroscopy/examples/output/
-# pyc
+TAGS
+tags
+lib/testtools
+MANIFEST
+dist
+.testrepository
+__pycache__
+fixtures.egg-info
 *.pyc
-# pycharm
-.idea/
-# eclipse
-.project
-.pydevproject
-# egg-info folder
-irrad_spectroscopy.egg-info/
+.*.swp
+*~
+AUTHORS
+ChangeLog
+.eggs
+build
+.tox
