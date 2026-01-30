@@ -1,4 +1,4 @@
-name: CI
+name: Node.js CI
 
 on:
   push:
@@ -10,42 +10,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [14] # 'nan' errors often occur on newer Node versions; using an older LTS version for compatibility.
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: "12"
-
-      - name: Start LocalStack
-        run: |
-          docker pull localstack/localstack
-          docker run --rm -d -p 4566:4566 -e SERVICES=cloudformation,iam,sts,lambda,apigateway,s3 -e DEBUG=1 localstack/localstack
-          # Wait for LocalStack health check to return 200 OK
-          timeout 60s bash -c 'until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4566/_localstack/health)" == "200" ]; do sleep 2; done'
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm install
-          # Install Serverless v2 to maintain compatibility with Node.js 12
-          npm install -g serverless@2
+        run: npm install
 
-      - name: Run lint and unit tests
-        run: |
-          set -e
-          npm run lint
-          npm run test
-
-      - name: Run integration tests
-        run: |
-          # Link the current plugin so the integration tests use the local version
-          npm link
-          npm link serverless-localstack
-          # Provide dummy AWS credentials required by Serverless
-          export AWS_ACCESS_KEY_ID=test
-          export AWS_SECRET_ACCESS_KEY=test
-          export AWS_DEFAULT_REGION=us-east-1
-          SLS_DEBUG=1 npm run test:integration
+      - name: Run tests
+        run: npm run test
 

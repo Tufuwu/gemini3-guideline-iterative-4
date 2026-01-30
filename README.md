@@ -1,227 +1,334 @@
-[![Build Status](https://travis-ci.org/localstack/serverless-localstack.svg?branch=master)](https://travis-ci.org/localstack/serverless-localstack)
+# react-cytoscapejs
 
-# LocalStack Serverless Plugin
+The `react-cytoscapejs` package is an MIT-licensed [React](https://reactjs.org) component for network (or graph, as in [graph theory](https://en.wikipedia.org/wiki/Graph_theory)) visualisation. The component renders a [Cytoscape](http://js.cytoscape.org) graph.
 
-[Serverless](https://serverless.com/) Plugin to support running against [Localstack](https://github.com/localstack/localstack).
+Most props of this component are [Cytoscape JSON](http://js.cytoscape.org/#core/initialisation).
 
-This plugin allows Serverless applications to be deployed and tested on your local machine. Any requests to AWS to be redirected to a running LocalStack instance.
+## Usage
 
-Pre-requisites:
-* LocalStack
+### npm
 
-## Installation
-
-The easiest way to get started is to install via npm.
-
-    npm install -g serverless
-    npm install --save-dev serverless-localstack
-
-## Configuring
-
-There are two ways to configure the plugin, via a JSON file or via `serverless.yml`.
-There are two supported methods for configuring the endpoints, globally via the
-`host` property, or individually. These properties may be mixed, allowing for
-global override support while also override specific endpoints.
-
-A `host` or individual endpoints must be configured or this plugin will be deactivated.
-
-### Configuration via serverless.yml
-
-Please refer to the example configuration template below. (Please note that most configurations
-in the sample are optional and need not be specified.)
-
-```
-service: myService
-
-plugins:
-  - serverless-localstack
-
-custom:
-  localstack:
-    stages:
-      # list of stages for which the plugin should be enabled
-      - local
-    host: http://localhost  # optional - LocalStack host to connect to
-    edgePort: 4566  # optional - LocalStack edge port to connect to
-    autostart: true  # optional - Start LocalStack in Docker on Serverless deploy
-    networks: #optional - attaches the list of networks to the localstack docker container after startup
-      - host
-      - overlay
-      - my_custom_network
-    lambda:
-      # Enable this flag to improve performance
-      mountCode: True
-    docker:
-      # Enable this flag to run "docker ..." commands as sudo
-      sudo: False
-  stages:
-    local:
-      ...
+```bash
+npm install react-cytoscapejs
+npm install cytoscape@3.x.y # your desired version, 3.2.19 or newer
 ```
 
-### Activating the plugin for certain stages
+### yarn
 
-Note the `stages` attribute in the config above. The `serverless-localstack` plugin gets activated if either:
-  1. the serverless stage (explicitly defined or default stage "dev") is included in the `stages` config; or
-  2. serverless is invoked without a `--stage` flag (default stage "dev") and no `stages` config is provided
-
-### Mounting Lambda code for better performance
-
-Note that the `localstack.lambda.mountCode` flag above will mount the local directory
-into the Docker container that runs the Lambda code in LocalStack. If you remove this
-flag, your Lambda code is deployed in the traditional way which is more in line with
-how things work in AWS, but also comes with a performance penalty: packaging the code,
-uploading it to the local S3 service, downloading it in the local Lambda API, extracting
-it, and finally copying/mounting it into a Docker container to run the Lambda. Mounting code
-from multiple projects is not supported with simple configuration, and you must use the
-`autostart` feature, as your code will be mounted in docker at start up. If you do need to
-mount code from multiple serverless projects, manually launch
-localstack with volumes specified. For example:
-
-```sh
-localstack start --docker -d \
-  -v /path/to/project-a:/path/to/project-a \
-  -v /path/to/project-b:/path/to/project-b
+```bash
+yarn add react-cytoscapejs
+yarn add cytoscape@3.x.y # your desired version, 3.2.19 or newer
 ```
 
-If you use either `serverless-webpack` or `serverless-plugin-typescript`, `serverless-localstack`
-will detect it and modify the mount paths to point to your output directory. You will need to invoke
-the build command in order for the mounted code to be updated. (eg: `serverless webpack`). There is no
-`--watch` support for this out of the box, but could be accomplished using nodemon:
+Note that you must specify the desired version of `cytoscape` to be used.  Otherwise, you will get whatever version npm or yarn thinks best matches this package's compatible semver range -- which is currently `^3.2.19` or any version of 3 newer than or equal to 3.2.19.
 
-```sh
-npm i --save-dev nodemon
+
+The component is created by putting a `<CytoscapeComponent>` within the `render()` function of one of your apps's React components. Here is a minimal example:
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom';
+import CytoscapeComponent from 'react-cytoscapejs';
+
+class MyApp extends React.Component {
+  constructor(props){
+    super(props);
+  }
+
+  render(){
+    const elements = [
+       { data: { id: 'one', label: 'Node 1' }, position: { x: 0, y: 0 } },
+       { data: { id: 'two', label: 'Node 2' }, position: { x: 100, y: 0 } },
+       { data: { source: 'one', target: 'two', label: 'Edge from Node1 to Node2' } }
+    ];
+
+    return <CytoscapeComponent elements={elements} style={ { width: '600px', height: '600px' } } />;
+  }
+}
+
+ReactDOM.render( React.createElement(MyApp, document.getElementById('root')));
 ```
 
-`package.json`:
+## `Basic props`
 
-```json
-  "scripts": {
-    "build": "serverless webpack --stage local",
-    "deploy": "serverless deploy --stage local",
-    "watch": "nodemon -w src -e '.*' -x 'npm run build'",
-    "start": "npm run deploy && npm run watch"
-  },
+### `elements`
+
+The flat list of [Cytoscape elements](http://js.cytoscape.org/#notation/elements-json) to be included in the graph, each represented as non-stringified JSON. E.g.:
+
+```jsx
+<CytoscapeComponent
+  elements={[
+    { data: { id: 'one', label: 'Node 1' }, position: { x: 0, y: 0 } },
+    { data: { id: 'two', label: 'Node 2' }, position: { x: 100, y: 0 } },
+    {
+      data: { source: 'one', target: 'two', label: 'Edge from Node1 to Node2' }
+    }
+  ]}
+/>
 ```
 
-```sh
-npm run start
+Note that arrays or objects should not be used in an `element`'s `data` or `scratch` fields, unless using a custom `diff()` prop.
+
+In order to make it easier to support passing in `elements` JSON in the `elements: { nodes: [], edges: [] }` format, there is a static function `CytoscapeComponent.normalizeElements()`.  E.g.:
+
+```jsx
+<CytoscapeComponent
+  elements={CytoscapeComponent.normalizeElements({
+    nodes: [
+      { data: { id: 'one', label: 'Node 1' }, position: { x: 0, y: 0 } },
+      { data: { id: 'two', label: 'Node 2' }, position: { x: 100, y: 0 } }
+    ],
+    edges: [
+      {
+        data: { source: 'one', target: 'two', label: 'Edge from Node1 to Node2' }
+      }
+    ]
+  })}
+/>
 ```
 
-#### A note on using webpack
+Note that `CytoscapeComponent.normalizeElements()` is useful only for plain-JSON data, such as an export from Cytoscape.js or the Cytoscape desktop software.  If you use [custom prop types](#custom-prop-types), such as Immutable, then you should flatten the elements yourself before passing the `elements` prop.
 
-`serverless-webpack` is supported, with code mounting. However, there are some assumptions
-and configuration requirements. First, your output directory must be `.webpack`. Second, you must retain
-your output directory contents. You can do this by modifying the `custom > webpack` portion of your
-serverless configuration file.
+### `stylesheet`
 
-```yml
-custom:
-  webpack:
-    webpackConfig: webpack.config.js
-    includeModules: true
-    keepOutputDirectory: true
-  localstack:
-    stages:
-      - local
-    lambda:
-      mountCode: true
-    autostart: true
+The Cytoscape stylesheet as non-stringified JSON. Note that the prop key is `stylesheet` rather than `style`, the key used by Cytoscape itself, so as to not conflict with the HTML [`style`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style) attribute. E.g.:
+
+```jsx
+<CytoscapeComponent
+  stylesheet={[
+    {
+      selector: 'node',
+      style: {
+        width: 20,
+        height: 20,
+        shape: 'rectangle'
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        width: 15
+      }
+    }
+  ]}
+/>
 ```
 
-### Environment Configurations
+### `layout`
 
-* `LAMBDA_MOUNT_CWD`: Allow users to define a custom working directory for Lambda mounts.
-   For example, when deploying a Serverless app in a Linux VM (that runs Docker) on a
-   Windows host where the `-v <local_dir>:<cont_dir>` flag to `docker run` requires us
-   to specify a `local_dir` relative to the Windows host file system that is mounted
-   into the VM (e.g., `"c:/users/guest/..."`).
-* `LAMBDA_EXECUTOR`: Executor type to use for running Lambda functions (default `docker`) -
-   see [LocalStack repo](https://github.com/localstack/localstack)
-* `LAMBDA_REMOTE_DOCKER`: Whether to assume that we're running Lambda containers against
-   a remote Docker daemon (default `false`) - see [LocalStack repo](https://github.com/localstack/localstack)
+Use a [layout](http://js.cytoscape.org/#layouts) to automatically position the nodes in the graph. E.g.:
 
-### Only enable serverless-localstack for the listed stages
-* ```serverless deploy --stage local``` would deploy to LocalStack.
-* ```serverless deploy --stage production``` would deploy to aws.
-
-```
-service: myService
-
-plugins:
-  - serverless-localstack
-
-custom:
-  localstack:
-    stages:
-      - local
-      - dev
-    endpointFile: path/to/file.json
+```jsx
+layout: {
+  name: 'random';
+}
 ```
 
-## LocalStack
+To use an external [layout extension](http://js.cytoscape.org/#extensions/layout-extensions), you must register the extension prior to rendering this component, e.g.:
 
-For full documentation, please refer to https://github.com/localstack/localstack
+```jsx
+import Cytoscape from 'cytoscape';
+import COSEBilkent from 'cytoscape-cose-bilkent';
+import React from 'react';
+import CytoscapeComponent from 'react-cytoscapejs';
 
-## Contributing
+Cytoscape.use(COSEBilkent);
 
-Setting up a development environment is easy using Serverless' plugin framework.
+class MyApp extends React.Component {
+  render() {
+    const elements = [
+      { data: { id: 'one', label: 'Node 1' }, position: { x: 0, y: 0 } },
+      { data: { id: 'two', label: 'Node 2' }, position: { x: 100, y: 0 } },
+      { data: { source: 'one', target: 'two', label: 'Edge from Node1 to Node2' } }
+    ];
 
-### Clone the Repo
+    const layout = { name: 'cose-bilkent' };
 
-```
-git clone https://github.com/localstack/serverless-localstack
-```
-
-### Setup your project
-
-```
-cd /path/to/serverless-localstack
-npm link
-
-cd myproject
-npm link serverless-localstack
-```
-
-### Optional Debug Flag
-
-An optional debug flag is supported via `serverless.yml` that will enable additional debug logs.
-
-```
-custom:
-  localstack:
-    debug: true
+    return <CytoscapeComponent elements={elements} layout={layout} />;
+  }
+}
 ```
 
-## Change Log
+### `cy`
 
-* v0.4.35: Add config option to connect to additional docker networks
-* v0.4.33: Fix parsing StepFunctions endpoint if the endpointInfo isn't defined
-* v0.4.32: Add endpoint to AWS credentials for compatibility with serverless-domain-manager plugin
-* v0.4.31: Fix format of API GW endpoints printed in stack output
-* v0.4.30: Fix plugin for use with Serverless version 2.30+
-* v0.4.29: Add missing service endpoints to config
-* v0.4.28: Fix plugin activation for variable refs in profile names
-* v0.4.27: Fix loading of endpoints file with variable references to be resolved
-* v0.4.26: Fix resolution of template variables during plugin initialization
-* v0.4.25: Use single edge port instead of deprecated service-specific ports
-* v0.4.24: Fix resolving of stage/profiles via variable expansion
-* v0.4.23: Fix config loading to enable file imports; fix output of API endpoints if plugin is not activated; enable SSM and CF output refs by performing early plugin loading
-* v0.4.21: Fix integration with `serverless-plugin-typescript` when `mountCode` is enabled
-* v0.4.20: Use `LAMBDA_EXECUTOR`/`LAMBDA_REMOTE_DOCKER` configurations from environment
-* v0.4.19: Fix populating local test credentials in AWS provider
-* v0.4.18: Fix output of API Gateway endpoints; add port mappings; fix config init code
-* v0.4.17: Enable configuration of `$START_WEB`
-* v0.4.16: Add option for running Docker as sudo; add fix for downloadPackageArtifacts
-* v0.4.15: Enable plugin on aws:common:validate events
-* v0.4.14: Initialize LocalStack using hooks for each "before:" event
-* v0.4.13: Add endpoint for SSM; patch serverless-secrets plugin; allow customizing $DOCKER_FLAGS
-* v0.4.12: Fix Lambda packaging for `mountCode:false`
-* v0.4.11: Add polling loop for starting LocalStack in Docker
-* v0.4.8: Auto-create deployment bucket; autostart LocalStack in Docker
-* v0.4.7: Set S3 path addressing; add eslint to CI config
-* v0.4.6: Fix port mapping for service endpoints
-* v0.4.5: Fix config to activate or deactivate the plugin for certain stages
-* v0.4.4: Add `LAMBDA_MOUNT_CWD` configuration for customizing Lambda mount dir
-* v0.4.3: Support local mounting of Lambda code to improve performance
-* v0.4.0: Add support for local STS
+This prop allows for getting a reference to the Cytoscape `cy` reference using a React ref function. This `cy` reference can be used to access the Cytoscape API directly. E.g.:
+
+```jsx
+class MyApp extends React.Component {
+  render() {
+    return <CytoscapeComponent cy={(cy) => { this.cy = cy }}>;
+  }
+}
+```
+
+## Viewport manipulation
+
+### `pan`
+
+The [panning position](http://js.cytoscape.org/#init-opts/pan) of the graph, e.g. `<CytoscapeComponent pan={ { x: 100, y: 200 } } />`.
+
+### `zoom`
+
+The [zoom level](http://js.cytoscape.org/#init-opts/zoom) of the graph, e.g. `<CytoscapeComponent zoom={2} />`.
+
+## Viewport mutability & gesture toggling
+
+### `panningEnabled`
+
+Whether the [panning position of the graph is mutable overall](http://js.cytoscape.org/#init-opts/panningEnabled), e.g. `<CytoscapeComponent panningEnabled={false} />`.
+
+### `userPanningEnabled`
+
+Whether the [panning position of the graph is mutable by user gestures](http://js.cytoscape.org/#init-opts/userPanningEnabled) such as swiping, e.g. `<CytoscapeComponent userPanningEnabled={false} />`.
+
+### `minZoom`
+
+The [minimum zoom level](http://js.cytoscape.org/#init-opts/minZoom) of the graph, e.g. `<CytoscapeComponent minZoom={0.5} />`.
+
+### `maxZoom`
+
+The [maximum zoom level](http://js.cytoscape.org/#init-opts/maxZoom) of the graph, e.g. `<CytoscapeComponent maxZoom={2} />`.
+
+### `zoomingEnabled`
+
+Whether the [zoom level of the graph is mutable overall](http://js.cytoscape.org/#init-opts/zoomingEnabled), e.g. `<CytoscapeComponent zoomingEnabled={false} />`.
+
+### `userZoomingEnabled`
+
+Whether the [zoom level of the graph is mutable by user gestures](http://js.cytoscape.org/#init-opts/userZoomingEnabled) (e.g. pinch-to-zoom), e.g. `<CytoscapeComponent userZoomingEnabled={false} />`.
+
+### `boxSelectionEnabled`
+
+Whether [shift+click-and-drag box selection is enabled](http://js.cytoscape.org/#init-opts/boxSelectionEnabled), e.g. `<CytoscapeComponent boxSelectionEnabled={false} />`.
+
+### `autoungrabify`
+
+If true, nodes [automatically can not be grabbed](http://js.cytoscape.org/#init-opts/autoungrabify) regardless of whether each node is marked as grabbable, e.g. `<CytoscapeComponent autoungrabify={true} />`.
+
+### `autolock`
+
+If true, [nodes can not be moved at all](http://js.cytoscape.org/#init-opts/autolock), e.g. `<CytoscapeComponent autolock={true} />`.
+
+### `autounselectify`
+
+If true, [elements have immutable selection state](http://js.cytoscape.org/#init-opts/autounselectify), e.g. `<CytoscapeComponent autounselectify={true} />`.
+
+## HTML attribute props
+
+These props allow for setting built-in HTML attributes on the div created by the component that holds the visualisation:
+
+### `id`
+
+The [`id`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id) attribute of the div, e.g. `<CytoscapeComponent id="myCy" />`.
+
+### `className`
+
+The [`class`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/class) attribute of the div containing space-separated class names, e.g. `<CytoscapeComponent className="foo bar" />`.
+
+### `style`
+
+The [`style`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style) attribute of the div containing CSS styles, e.g. `<CytoscapeComponent style={ { width: '600px', height: '600px' } } />`.
+
+## Custom prop types
+
+This component allows for props of custom type to be used (i.e. non JSON props), for example an object-oriented model or an [Immutable](http://facebook.github.io/immutable-js/) model. The props used to control the reading and diffing of the main props are listed below.
+
+Examples are given using Immutable. Using Immutable allows for cheaper diffs, which is useful for updating graphs with many `elements`. For example, you may specify `elements` as the following:
+
+```js
+const elements = Immutable.List([
+  Immutable.Map({ data: Immutable.Map({ id: 'foo', label: 'bar' }) })
+]);
+```
+
+### `get(object, key)`
+
+Get the value of the specified `object` at the `key`, which may be an integer in the case of lists/arrays or strings in the case of maps/objects. E.g.:
+
+```js
+const get = (object, key) => {
+  // must check type because some props may be immutable and others may not be
+  if (Immutable.Map.isMap(object) || Immutable.List.isList(object)) {
+    return object.get(key);
+  } else {
+    return object[key];
+  }
+}
+```
+
+The default is:
+
+```js
+const get = (object, key) => object[key];
+```
+
+### `toJson(object)`
+
+Get the deep value of the specified `object` as non-stringified JSON. E.g.:
+
+```js
+const toJson = (object) => {
+  // must check type because some props may be immutable and others may not be
+  if (Immutable.isImmutable(object)) {
+    return object.toJSON();
+  } else {
+    return object;
+  }
+}
+```
+
+The default is:
+
+```js
+const toJson = (object) => object;
+```
+
+### `diff(objectA, objectB)`
+
+Return whether the two objects have equal value. This is used to determine if and where Cytoscape needs to be patched. E.g.:
+
+```js
+const diff = (objectA, objectB) => objectA !== objectB; // immutable creates new objects for each operation
+```
+
+The default is a shallow equality check over the fields of each object. This means that if you use the default `diff()`, you should not use arrays or objects in an element's `data` or `scratch` fields.
+
+Immutable benefits performance here by reducing the total number of `diff()` calls needed. For example, an unchanged `element` requires only one diff with Immutable whereas it would require many diffs with the default JSON `diff()` implementation. Basically, Immutable make diffs minimal-depth searches.
+
+### `forEach(list, iterator)`
+
+Call `iterator` on each element in the `list`, in order. E.g.:
+
+```js
+const forEach = (list, iterator) => list.forEach(iterator); // same for immutable and js arrays
+```
+
+The above example is the same as the default `forEach()`.
+
+## Reference props
+
+### `cy()`
+
+The `cy` prop allows for getting a reference to the `cy` Cytoscape object, e.g.:
+
+```jsx
+<CytoscapeComponent cy={(cy) => { myCyRef = cy }} />
+```
+
+## Change log
+
+- v1.2.1
+  - When patching, apply layout outside of batching.
+- v1.2.0
+  - Add support for `headless`, `styleEnabled` and the following (canvas renderer) rendering hints: `hideEdgesOnViewport`, `textureOnViewport`, `motionBlur`, `motionBlurOpacity`, `wheelSensitivity`, `pixelRatio`
+  - Add setup and version explanation to README
+  - Add a default React displayName
+- v1.1.0
+  - Add `Component.normalizeElements()` utility function
+  - Update style prop docs
+- v1.0.1
+  - Update style attribute in docs example to use idiomatic React style object
+  - Add npmignore
+- v1.0.0
+  - Initial release
+  

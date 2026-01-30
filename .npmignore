@@ -1,5 +1,2 @@
-.babelrc
-.gitignore
-.travis.yml
-bin/rename
-doc/
+.idea
+node_modules
