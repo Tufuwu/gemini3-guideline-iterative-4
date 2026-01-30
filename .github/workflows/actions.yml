@@ -1,4 +1,4 @@
-name: Python Package
+name: CI
 
 on:
   push:
@@ -6,38 +6,32 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
-
-    env:
-      NUMPY_VERSION: stable
-      ASTROPY_VERSION: stable
-      SETUP_CMD: test
-      PIP_DEPENDENCIES: ''
-      CONDA_DEPENDENCIES: 'scipy pytest-cov'
-      TRAVIS_OS_NAME: linux
+        python-version: ["3.7"]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          auto-activate-base: true
-          activate-environment: test
 
-      - name: Install ci-helpers and Run Setup
-        shell: bash -l {0}
+      - name: Install dependencies
         run: |
-          git clone https://github.com/astropy/ci-helpers.git
-          # Source the script using the login shell which has conda initialized
-          source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
+          python -m pip install --upgrade pip
+          pip install sphinx==3.2.1 pyspark==3.0.1 tensorflow-cpu==1.15.0
+          pip install pytest
+
+      - name: Build documentation
+        run: |
+          pushd docs/
+          PYTHONPATH=.. make clean html
+          popd
 
       - name: Run tests
-        shell: bash -l {0}
-        run: py.test
+        run: pytest
 
