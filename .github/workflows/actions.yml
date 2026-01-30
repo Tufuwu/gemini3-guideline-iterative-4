@@ -10,56 +10,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:9.6
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: "12"
 
-      - name: Create database
+      - name: Start LocalStack
         run: |
-          sudo apt-get install -y postgresql-client
-          psql -c 'create database sequelize;' -U postgres -h localhost
-        env:
-          PGPASSWORD: ""
+          docker pull localstack/localstack
+          docker run --rm -d -p 4566:4566 -e SERVICES=cloudformation,iam,sts,lambda,apigateway,s3 -e DEBUG=1 localstack/localstack
+          # Wait for LocalStack health check to return 200 OK
+          timeout 60s bash -c 'until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4566/_localstack/health)" == "200" ]; do sleep 2; done'
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm test
-
-      - name: Coverage and Coveralls
-        uses: coverallsapp/github-action@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ./coverage/lcov.info
-          base-path: .
-          allow-empty: true
-        continue-on-error: true
-        # Note: Using the official action is more reliable than the legacy CLI 
-        # for resolving "repository matching this job" errors in GitHub Actions.
-
-      - name: Legacy Coverage Cleanup (Optional)
         run: |
-          ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha --report lcovonly test/overall.test.js -- --exit || true
-          rm -rf ./coverage
+          npm install
+          # Install Serverless v2 to maintain compatibility with Node.js 12
+          npm install -g serverless@2
+
+      - name: Run lint and unit tests
+        run: |
+          set -e
+          npm run lint
+          npm run test
+
+      - name: Run integration tests
+        run: |
+          # Link the current plugin so the integration tests use the local version
+          npm link
+          npm link serverless-localstack
+          # Provide dummy AWS credentials required by Serverless
+          export AWS_ACCESS_KEY_ID=test
+          export AWS_SECRET_ACCESS_KEY=test
+          export AWS_DEFAULT_REGION=us-east-1
+          SLS_DEBUG=1 npm run test:integration
 
