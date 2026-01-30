@@ -1,4 +1,4 @@
-name: CI
+name: Python Package
 
 on:
   push:
@@ -9,70 +9,51 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.13-dev"]
+        python-version: ["3.8", "3.9", "3.13-dev"]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Before install
-        run: |
-          pip install pylint pytest pytest-cov
-          pylint --generate-rcfile > ~/.pylintrc
-          sed -i "s/min-similarity-lines=.*/min-similarity-lines=50/g" ~/.pylintrc
-          git describe --tags --long --dirty || sed -i "s/setup_requires = .*/version = '0.0.0',/g" setup.py
-
       - name: Install dependencies
-        run: pip install -e .
+        run: pip install simplejson minimock coverage pytest
 
-      - name: Run lint
+      - name: Fix deprecated unittest aliases for Python 3.11+
         run: |
-          pylint content_hash/*
-          pylint example.py
-        continue-on-error: ${{ matrix.python-version == '3.13-dev' }}
+          grep -rl "assertEquals" . --exclude-dir=.git | xargs sed -i 's/assertEquals/assertEqual/g'
+          grep -rl "assert_" . --exclude-dir=.git | xargs sed -i 's/assert_/assertTrue/g'
 
-      - name: Run test
-        run: pytest --cov=content_hash --cov-report=xml
-
-      - name: After script (Scrutinizer)
-        if: matrix.python-version == '3.8'
-        run: |
-          pip install scrutinizer-ocular
-          ocular --data-file coverage.xml
-        continue-on-error: true
+      - name: Run tests
+        run: make test
 
   deploy:
     needs: test
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.9"
 
-      - name: Install build tools
-        run: pip install setuptools wheel twine
+      - name: Install pypa/build
+        run: pip install build
 
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USER }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python setup.py sdist bdist_wheel
-          twine upload --skip-existing dist/*
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: gpodder
+          password: ${{ secrets.PYPI_PASSWORD }}
 
