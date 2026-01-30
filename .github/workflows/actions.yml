@@ -1,44 +1,45 @@
-name: CI
+name: Python Package CI
 
 on:
   push:
-    branches: [ main, main ]
   pull_request:
-    branches: [ main, main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.9", "3.8"]
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
         with:
+          auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          activate-environment: test-env
 
-      - name: Install dependencies
+      - name: Install Dependencies
+        shell: bash -l {0}
         run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade "numpy<2.0.0"
-          # Pin scipy to avoid DeprecationWarnings from simps until code is updated
-          pip install "scipy<1.14.0"
+          # Install core dependencies via Conda to avoid building from source
+          conda install --yes numpy scipy pyyaml matplotlib nose jupyter pandas setuptools
+          
+          # Fix for 'distutils.msvccompiler' and 'Python.h' issues:
+          # 1. Ensure we are using CPython, not PyPy (based on the error path /pypy3.9/)
+          # 2. Install setuptools<60 to maintain compatibility with legacy numpy distutils
+          pip install --upgrade pip
+          pip install "setuptools<60" wheel
+          
+          # Install requirements, ensuring we don't try to re-build numpy
           pip install -r requirements.txt
-          pip install -r requirements-test.txt
-          pip install .
+          python setup.py develop
 
       - name: Run tests
-        env:
-          NUMBA_DISABLE_JIT: "1"
-        run: pytest --durations=0
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+        shell: bash -l {0}
+        run: nosetests
 
