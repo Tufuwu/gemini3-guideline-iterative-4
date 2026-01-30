@@ -2,100 +2,43 @@ name: CI
 
 on:
   push:
-    branches: ["*"]
-    tags: ["*"]
+    branches: [ main, main ]
   pull_request:
-    branches: ["*"]
+    branches: [ main, main ]
 
 jobs:
-  lint:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry tox
-          poetry install
-      - name: Run lint
-        run: |
-          tox -e black
-          tox -e flake8
-          tox -e yamllint
-
-  test:
-    needs: lint
-    runs-on: ubuntu-24.04
+  build:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - python-version: "3.8"
-            tox-env: py38
-          - python-version: "3.9"
-            tox-env: py39
-          - python-version: "3.10"
-            tox-env: py310
+        python-version: ["3.8", "3.9"]
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install poetry tox
-          poetry install
+          pip install --upgrade "numpy<2.0.0"
+          # Pin scipy to avoid DeprecationWarnings from simps until code is updated
+          pip install "scipy<1.14.0"
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+          pip install .
+
       - name: Run tests
-        run: |
-          tox -e ${{ matrix.tox-env }}
-
-  deploy-github:
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-      - name: Build
-        run: |
-          poetry version ${{ github.ref_name }}
-          poetry build
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_AUTH_TOKEN }}
+          NUMBA_DISABLE_JIT: "1"
+        run: pytest --durations=0
 
-  deploy-pypi:
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-      - name: Publish
-        run: |
-          echo Deploying the release to PyPI
-          poetry version ${{ github.ref_name }}
-          poetry publish --build -u __token__ -p ${{ secrets.PYPI_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
