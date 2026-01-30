@@ -1,7 +1,6 @@
-/doc/_build
-__pycache__
+*.log
+*.pot
 *.pyc
-docs/
-*~
-*#
-/.coverage
+build/
+dist/
+django_earthdistance.egg-info/
