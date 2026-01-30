@@ -1,5 +1,5 @@
-/.idea
-/node_modules
-/out
-
-/.grunt
+node_modules
+.DS_Store
+*.log
+coverage
+.nyc_output

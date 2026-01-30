@@ -1,48 +1,53 @@
 {
-  "private": true,
-  "name": "definitelytyped.github.io",
-  "version": "0.1.0",
-  "description": "DefinitelyTyped website",
-  "homepage": "http://definitelytyped.github.io",
-  "keywords": [
-    "DefinitelyTyped",
-    "website"
-  ],
-  "author": "DefinitelyTyped",
-  "maintainers": [],
-  "contributors": [],
-  "bugs": {
-    "url": "https://github.com/DefinitelyTyped/definitelytyped.github.io/issues"
+  "name": "lintspaces-cli",
+  "version": "1.0.0-beta",
+  "description": "CLI for the lintspaces module",
+  "main": "index.js",
+  "scripts": {
+    "coveralls": "npm run coverage && cat coverage/lcov.info | coveralls",
+    "coverage": "nyc mocha test/*.js && nyc report --reporter=lcov",
+    "format": "prettier --no-semi --single-quote --write index.js",
+    "test": "mocha test/*.test.js"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test && npm run format && git add ."
+    }
+  },
+  "bin": {
+    "lintspaces": "bin/lintspaces-cli.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/DefinitelyTyped/definitelytyped.github.io.git"
+    "url": "git://github.com/evanshortiss/lintspaces-cli.git"
   },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://raw.github.com/DefinitelyTyped/definitelytyped.github/master/LICENSE-MIT.txt"
-    }
+  "keywords": [
+    "lintspaces",
+    "node-lintspaces",
+    "cli"
   ],
-  "scripts": {
-    "test": "grunt test",
-    "deploy": "grunt deploy"
+  "engines": {
+    "node": ">=6"
   },
-  "dependencies": {},
+  "author": "Evan Shortiss",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/evanshortiss/lintspaces-cli/issues"
+  },
+  "homepage": "https://github.com/evanshortiss/lintspaces-cli",
+  "dependencies": {
+    "colors": "~1.4.0",
+    "commander": "~12.1.0",
+    "glob": "~11.0.0",
+    "lintspaces": "~0.12.0",
+    "lodash.map": "~4.6.0"
+  },
   "devDependencies": {
-    "docpad": "^6.79.0",
-    "docpad-plugin-eco": "^2.1.0",
-    "docpad-plugin-marked": "^2.2.0",
-    "docpad-plugin-partials": "^2.9.0",
-    "docpad-plugin-less": "^2.4.1",
-    "docpad-plugin-livereload": "^2.6.0",
-    "grunt": "^1.0.1",
-    "grunt-cli": "^1.2.0",
-    "grunt-gh-pages": "^2.0.0",
-    "grunt-contrib-clean": "^1.1.0",
-    "grunt-contrib-copy": "^1.0.0",
-    "highlight.js": "^9.12.0",
-    "marked": "^0.3.2"
-  },
-  "main": "node_modules/docpad/bin/docpad-server"
+    "coveralls": "~3.1.1",
+    "expect": "~29.7.0",
+    "mocha": "~10.7.3",
+    "nyc": "~17.1.0",
+    "prettier": "~3.3.3",
+    "sinon": "~19.0.2"
+  }
 }
